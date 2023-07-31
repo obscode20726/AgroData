@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Finance;
 use App\Models\Season;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PDF;
 
 class FinanceController extends Controller
 {
@@ -46,14 +48,40 @@ class FinanceController extends Controller
         $finance->season_id = $request->season_id;
         $finance->production_cost = $request->production_cost;
         $finance->income = $request->income;
+
+        // Calculate gross_margin and net_profit
         $finance->gross_margin = $request->income - $request->production_cost;
         $finance->labor_cost = $request->labor_cost;
         $finance->fertilizer_cost = $request->fertilizer_cost;
         $finance->pesticide_cost = $request->pesticide_cost;
         $finance->irrigation_cost = $request->irrigation_cost;
         $finance->net_profit = $request->income - $request->production_cost - $request->labor_cost - $request->fertilizer_cost - $request->pesticide_cost - $request->irrigation_cost;
+
         $finance->save();
 
         return redirect()->back()->with('success', 'Finance record added successfully!');
+    }
+
+    public function generateFinancePDF()
+    {
+        $finances = Finance::all();
+
+        // Load the view and pass the finance data to it
+        $pdf = PDF::loadView('finance.pdfreport', compact('finances'));
+
+        // Return the PDF for download or display in the browser
+        return $pdf->stream('finance_report.pdf');
+    }
+
+    public function generateFarmerFinancePDF()
+    {
+        $farmerId = Auth::user()->id;
+        $finances = Finance::where('farmer_id', $farmerId)->get();
+
+        // Load the view and pass the finance data to it
+        $pdf = PDF::loadView('finance.pdffarmerreport', compact('finances'));
+
+        // Return the PDF for download or display in the browser
+        return $pdf->stream('finance_report.pdf');
     }
 }

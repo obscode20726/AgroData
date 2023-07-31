@@ -19,6 +19,9 @@
                             data-bs-target="#addEnergyModal">
                             Declare Energy Usage
                         </button>
+                        <div>
+                         <a href="{{ url('/generate-farmer-energy-report-pdf') }}" class="btn btn-primary">Download PDF</a>
+                        </div>
 
                     </div>
                     <div class="card-body">
@@ -39,7 +42,7 @@
                                         <tr>
                                             <th scope="row">{{ $energy->id }}</th>
                                             <td>{{ $energy->crop->crop_type }}</td>
-                                            <td>{{ $energy->season->name }}</td>
+                                            <td><span class="badge bg-success">{{ $energy->season->name }} </span></td>
                                             <td>{{ $energy->energy_type }}</td>
                                             <td>{{ $energy->cost }}</td>
                                             <td>{{ $energy->created_at }}</td>

@@ -6,6 +6,8 @@ use App\Models\Crop;
 use App\Models\Season;
 use App\Models\Water;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use PDF;
 
 class WaterController extends Controller
 {
@@ -58,4 +60,23 @@ class WaterController extends Controller
         $water->save();
         return redirect()->back()->with('success', 'Water added successfully');
     }
+
+    public function generatePDF()
+{
+    $waters = Water::all(); // Fetch the data from the database
+
+    $pdf = PDF::loadView('water.pdfreport', compact('waters'));
+    return $pdf->download('irrigation_report.pdf');
+}
+public function generateFarmerWaterPDF()
+{
+    $farmerId = Auth::user()->id;
+    $waters = Water::where('farmer_id', $farmerId)->get();
+
+    // Load the view and pass the finance data to it
+    $pdf = PDF::loadView('water.pdffarmerreport', compact('waters'));
+
+    // Return the PDF for download or display in the browser
+    return $pdf->stream('water_farmer_report.pdf');
+}
 }

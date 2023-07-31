@@ -18,6 +18,9 @@
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addWaterModal">
                             Register water usage
                           </button>
+                          <div>
+                         <a href="{{ url('/generate-farmer-water-report-pdf') }}" class="btn btn-primary">Download PDF</a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive border rounded">
@@ -38,7 +41,7 @@
                                     @foreach ($waters as $water)
                                         <tr>
                                             <td>{{ $water->id }}</td>
-                                            <td>{{ $water->season->name }}</td>
+                                            <td><span class="badge bg-success">{{ $water->season->name }} </span></td>
                                             <td>{{ $water->crop->crop_type }}</td>
                                             <td>{{ $water->amount }}</td>
                                             <td>{{ $water->irrigation_type }}</td>

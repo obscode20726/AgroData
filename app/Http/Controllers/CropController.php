@@ -7,6 +7,8 @@ use App\Models\Season;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use PDF;
 
 class CropController extends Controller
 {
@@ -20,23 +22,34 @@ class CropController extends Controller
     public function cropAdmin()
     {
         $crops = Crop::with('farmer', 'season')->get();
-        $seasons = Season::all();
+    $seasons = Season::all();
 
-        $data = DB::table('crops')
-            ->join('seasons', 'crops.season_id', '=', 'seasons.id')
-            ->select('seasons.name', 'crops.seed_type', DB::raw('SUM(crops.yield) as total_yield'))
-            ->groupBy('seasons.name', 'crops.seed_type')
-            ->get();
+    // Group the crop data by seasons.name and crops.crop_type
+    $groupedCrops = $crops->groupBy(function ($crop) {
+        return $crop->season->name . ' - ' . $crop->crop_type;
+    });
 
-        $chartData = [];
-        $labels = [];
+    // Calculate total yield for each group
+    $cropChartData = $groupedCrops->map(function ($group) {
+        $totalYield = $group->sum('yield');
+        return [
+            'total_yield' => $totalYield,
+        ];
+    });
 
-        foreach ($data as $row) {
-            $labels[] = $row->name . ' - ' . $row->seed_type;
-            $chartData[] = $row->total_yield;
-        }
+    // Process data for the chart
+    $chartData = $cropChartData->map(function ($data) {
+        return $data['total_yield'];
+    })->all();
 
-        $cropPieData = DB::table('crops')
+    $labels = $cropChartData->keys()->all();
+
+    // Continue with other parts of the function as before
+    $cropJson = response()->json([
+        'data' => $crops,
+    ]);
+
+    $cropPieData = DB::table('crops')
         ->join('seasons', 'crops.season_id', '=', 'seasons.id')
         ->select('seasons.name as season', 'crops.yield')
         ->get()
@@ -45,7 +58,7 @@ class CropController extends Controller
             return $groupedData->sum('yield');
         });
 
-        return view('crops.admin', compact('crops', 'seasons', 'chartData', 'labels','cropPieData'));
+    return view('crops.admin', compact('crops', 'seasons', 'chartData', 'labels', 'cropPieData', 'cropChartData'));
     }
 
     public function store(Request $request)
@@ -64,4 +77,23 @@ class CropController extends Controller
         $crop->save();
         return redirect()->back()->with('success', 'Crop added successfully!');
     }
+    public function generateCropsPDF()
+    {
+        $crops = Crop::all();
+
+        $pdf = PDF::loadView('crops.pdfcropreport', compact('crops'));
+        return $pdf->download('crops_report.pdf');
+    }
+    public function generateFarmerCropPDF()
+{
+    $farmerId = Auth::user()->id;
+    $crops = Crop::where('farmer_id', $farmerId)->get();
+    $seasons = Season::all(); // Add this line to fetch seasons data
+
+    // Load the view and pass the crop data and seasons to it
+    $pdf = PDF::loadView('crops.pdffarmerreport', compact('crops', 'seasons'));
+
+    // Return the PDF for download or display in the browser
+    return $pdf->stream('crops_farmer_report.pdf');
+}
 }

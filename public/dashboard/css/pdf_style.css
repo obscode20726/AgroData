@@ -1,0 +1,16 @@
+/* Custom CSS for the PDF report */
+body {
+    padding: 20px;
+    font-size: 10px; /* Reduce the font size */
+}
+
+/* Add any other custom styles you want to apply to the PDF */
+/* For example, to style the "Season" column width, you can use the class name "smaller-column" */
+.smaller-column {
+    width: 10px; /* Adjust the width as needed */
+    word-wrap: break-word; /* Wrap text if it exceeds the width */
+}
+.bigger-column {
+    width: 50px; /* Adjust the width as needed */
+    word-wrap: break-word; /* Wrap text if it exceeds the width */
+}

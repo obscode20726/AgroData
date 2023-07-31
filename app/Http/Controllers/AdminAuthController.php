@@ -20,6 +20,7 @@ class AdminAuthController extends Controller
             'email' => 'required|email',
             'password' => 'required',
         ]);
+        $remember = $request->has('remember'); // Check if "Remember Me" is checked
 
         if (Auth::guard('admin')->attempt(['email' => $request->email, 'password' => $request->password])) {
             return redirect()->intended('/admin/dashboard');

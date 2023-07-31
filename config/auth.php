@@ -98,6 +98,12 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+        'farmers' => [
+            'provider' => 'farmers',
+            'table' => 'password_resets',
+            'expire' => 1,
+            'throttle' => 1,
+        ],
     ],
 
     /*

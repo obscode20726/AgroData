@@ -44,6 +44,9 @@
                             <h4 class="card-title">Crops Report List</h4>
 
                         </div>
+                        <div>
+                         <a href="{{ url('/generate-crops-report-pdf') }}" class="btn btn-primary">Download PDF</a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive border rounded">
@@ -52,7 +55,7 @@
                                     <tr>
                                         <th>#</th>
                                         <th>Crop Type</th>
-                                        {{-- <th>Farmer</th> --}}
+                                        <th>Farmer</th>
                                         <th>Season</th>
                                         <th>Area</th>
                                         <th>Planting Date</th>
@@ -67,6 +70,7 @@
                                         <tr>
                                             <th scope="row">{{ $crop->id }}</th>
                                             <td>{{ $crop->crop_type }}</td>
+                                            <td>{{ $crop->farmer->name }}</td>
                                             {{-- <td>{{ $crop->farmer->name }}</td> --}}
                                             <td> <span class="badge bg-success">{{ $crop->season->name }}</span> </td>
                                             <td>{{ $crop->area }}</td>
@@ -90,60 +94,85 @@
 </main>
 @include('components.dashjs')
 <script>
-    var ctx = document.getElementById('crop-season-yield-chart').getContext('2d');
-    var chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {!! json_encode($labels) !!},
-            datasets: [{
-                label: 'Crop Yield',
-                data: {!! json_encode($chartData) !!},
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
+  // Retrieve crop data from backend
+let cropData = @json($crops);
+
+// Group the data by 'crop_type' and calculate the sum of 'yield'
+let cropChartData = {};
+cropData.forEach(data => {
+    let key = data.crop_type; // Use only 'crop_type' to group the data
+    if (!cropChartData[key]) {
+        cropChartData[key] = {
+            total_yield: 0,
+        };
+    }
+    cropChartData[key].total_yield += parseFloat(data.yield);
+});
+
+// Extract labels and datasets for the area chart
+let areaLabels = Object.keys(cropChartData);
+let areaDatasets = [{
+    label: 'Total Yield',
+    data: Object.values(cropChartData).map(data => data.total_yield),
+    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+    borderColor: 'rgba(54, 162, 235, 1)',
+    borderWidth: 1,
+    fill: true, // Set to true to create an area chart
+}];
+
+// Create Crop Area Chart
+var cropAreaChart = new Chart(document.getElementById('crop-season-yield-chart').getContext('2d'), {
+    type: 'line', // Use 'line' type for area chart
+    data: {
+        labels: areaLabels,
+        datasets: areaDatasets
+    },
+    options: {
+        responsive: true,
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true
+                }
             }]
-        },
-        options: {
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }]
-            }
         }
-    });
+    }
+});
 
+// Extract data for the pie chart
+let pieData = {};
+cropData.forEach(data => {
+    let key = data.crop_type; // Use only 'crop_type' to group the data
+    if (!pieData[key]) {
+        pieData[key] = 0;
+    }
+    pieData[key] += parseFloat(data.yield);
+});
 
-    // PIE DATA
+// Extract pie chart labels and values from the pieData
+let pieLabels = Object.keys(pieData);
+let pieValues = Object.values(pieData);
+let pieColors = pieLabels.map(() => '#' + Math.floor(Math.random() * 16777215).toString(16));
 
-    // Get data from controller
-    var cropPieData = {!! json_encode($cropPieData) !!};
-
-    // Extract season names and corresponding crop yields
-    var seasonNames = Object.keys(cropPieData);
-    var cropYields = Object.values(cropPieData);
-
-    // Generate random colors for pie chart slices
-    var colors = seasonNames.map(function(seasonName) {
-        return '#' + Math.floor(Math.random() * 16777215).toString(16);
-    });
-
-    // Create pie chart
-    var pieChart = new Chart(document.getElementById("pieChart"), {
-        type: 'pie',
-        data: {
-            labels: seasonNames,
-            datasets: [{
-                backgroundColor: colors,
-                data: cropYields
-            }]
-        },
-        options: {
-            title: {
-                display: true,
-                text: 'Crop yields by season'
-            }
+// Create Crop Pie Chart
+var cropPieChart = new Chart(document.getElementById("pieChart").getContext('2d'), {
+    type: 'polarArea', // Use 'pie' type for 3D pie chart
+    data: {
+        labels: pieLabels,
+        datasets: [{
+            data: pieValues,
+            backgroundColor: pieColors
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        title: {
+            display: true,
+            text: 'Crop Yields by Crop Type'
         }
-    });
+    }
+});
+
+
 </script>

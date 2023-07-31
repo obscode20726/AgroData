@@ -1,5 +1,6 @@
 @include('components.dashcss')
 @include('farmer.components.aside')
+
 <main class="main-content">
     <div class="position-relative ">
         <!--Nav Start-->
@@ -18,6 +19,9 @@
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCropModal">
                            Declare Crop Usage
                           </button>
+                          <div>
+                         <a href="{{ url('/generate-farmer-crop-report-pdf') }}" class="btn btn-primary">Download PDF</a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive border rounded">
@@ -133,6 +137,124 @@
             </div>
         </div>
     </div>
+    <style>
+    #recommendations-container ul {
+        font-size: 20px;
+    }
+
+    /* Define animation keyframes */
+    @keyframes fadeIn {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Apply animation to list items */
+    #recommendations-container ul li {
+        animation: fadeIn 0.5s ease-in-out both;
+    }
+</style>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Crop Recommendations</h4>
+                </div>
+                <div class="card-body">
+                    <form id="recommendation-form" action="{{ route('recommendation') }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <label for="region" class="form-label">Enter your region:</label>
+                            <input type="text" class="form-control" id="region" name="region" required>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">Get Recommendation</button>
+                        </div>
+                    </form>
+                    <div id="recommendations-container">
+                        <h1>Crop Recommendations</h1>
+                        @if ($recommendations ?? null)
+                            @if ($recommendations->isEmpty())
+                                <p>No recommendations found for the specified region.</p>
+                            @else
+                                <ul>
+                                    @foreach ($recommendations as $recommendation)
+                                        <li>{{ $recommendation->crop }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    // Listen for form submission
+    document.querySelector('#recommendation-form').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the form from submitting normally
+
+        // Get the form data
+        const formData = new FormData(this);
+
+        // Send a POST request to the recommendation route
+        fetch('{!! route('recommendation') !!}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json()) // Parse the response as JSON
+        .then(data => {
+            // Check if recommendations exist
+            if (data.recommendations.length > 0) {
+                // Get the recommendations container element
+                const recommendationsContainer = document.querySelector('#recommendations-container');
+
+                // Clear any existing content in the container
+                recommendationsContainer.innerHTML = '';
+
+                // Create the heading element
+                const heading = document.createElement('h1');
+                heading.textContent = 'Crop Recommendations';
+
+                // Create the unordered list element
+                const ul = document.createElement('ul');
+
+                // Loop through the recommendations and create list items
+                data.recommendations.forEach(recommendation => {
+                    const li = document.createElement('li');
+                    li.textContent = recommendation.crop;
+                    ul.appendChild(li);
+                });
+
+                // Append the heading and list to the container
+                recommendationsContainer.appendChild(heading);
+                recommendationsContainer.appendChild(ul);
+            } else {
+                // Display a message when no recommendations are found
+                document.querySelector('#recommendations-container').innerHTML = '<p>No recommendations found for the specified region.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('An error occurred:', error);
+        });
+    });
+</script>
+
+
+
+</div>
     @include('components.dashfooter')
 </main>
 @include('components.dashjs')
+

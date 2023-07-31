@@ -1,5 +1,6 @@
 @include('components.dashcss')
 @include('admin.components.aside')
+
 <main class="main-content">
     <div class="position-relative ">
         <!--Nav Start-->
@@ -18,7 +19,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <canvas id="energy-bar-chart"></canvas>
+                        <canvas id="energy-area-chart"></canvas>
                     </div>
                 </div>
             </div>
@@ -32,7 +33,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <canvas id="energy-pie-chart"></canvas>
+                        <canvas id="energy-pie-chart" width="400" height="400"></canvas>
                     </div>
                 </div>
             </div>
@@ -44,6 +45,9 @@
                             <h4 class="card-title">Energy Usage Report</h4>
 
                         </div>
+                        <div>
+                         <a href="{{ url('/generate-energy-report-pdf') }}" class="btn btn-primary">Download PDF</a>
+                        </div>
 
                     </div>
                     <div class="card-body">
@@ -53,6 +57,7 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Crop Type</th>
+                                        <th>Farmer Name</th>
                                         <th>Season Name</th>
                                         <th>Energy Type</th>
                                         <th>Cost</th>
@@ -64,7 +69,8 @@
                                         <tr>
                                             <th scope="row">{{ $energy->id }}</th>
                                             <td>{{ $energy->crop->crop_type }}</td>
-                                            <td>{{ $energy->season->name }}</td>
+                                            <td>{{ $energy->farmer->name }}</td>
+                                            <td><span class="badge bg-success">{{ $energy->season->name }} </span></td>
                                             <td>{{ $energy->energy_type }}</td>
                                             <td>{{ $energy->cost }}</td>
                                             <td>{{ $energy->created_at }}</td>
@@ -84,33 +90,50 @@
 </main>
 @include('components.dashjs')
 
+<!-- Script for Energy Charts -->
 <script>
     // Retrieve energy data from backend
-    let energyData = @json($energyChart);
-    // Extract labels and datasets for the bar chart
-    let barLabels = energyData.original.data.map(data => data.season.name);
-    let barDatasets = [{
-        label: 'Electricity',
-        data: energyData.original.data.map(data => data.amount),
-        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-        borderColor: 'rgb(54, 162, 235)',
-        borderWidth: 1
+    let energyData = @json($energies);
+
+    // Group the data by 'season.name' and 'crop.crop_type' and calculate the sum of 'cost'
+    let energyChartData = {};
+    energyData.forEach(data => {
+        let key = data.crop.crop_type;
+        if (!energyChartData[key]) {
+            energyChartData[key] = {
+                total_cost: 0,
+                total_amount: 0,
+            };
+        }
+        energyChartData[key].total_cost += parseFloat(data.cost);
+        energyChartData[key].total_amount += parseFloat(data.amount);
+    });
+
+    // Extract labels and datasets for the area chart
+    let areaLabels = Object.keys(energyChartData);
+    let areaDatasets = [{
+        label: 'Total Cost',
+        data: Object.values(energyChartData).map(data => data.total_cost),
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1,
+        fill: true, // Set to true to create an area chart
     },
     {
-        label: 'Cost',
-        data: energyData.original.data.map(data => data.cost),
-        backgroundColor: 'rgb(255, 99, 132)',
-        borderColor: 'rgb(255, 99, 132)',
-        borderWidth: 1
+        label: 'Total Amount',
+        data: Object.values(energyChartData).map(data => data.total_amount),
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1,
+        fill: true, // Set to true to create an area chart
     }];
 
-    // BAR CHART
-    let barCtx = document.getElementById('energy-bar-chart').getContext('2d');
-    let barChart = new Chart(barCtx, {
-        type: 'bar',
+    // Create Energy Area Chart
+    var energyAreaChart = new Chart(document.getElementById('energy-area-chart').getContext('2d'), {
+        type: 'line', // Use 'line' type for area chart
         data: {
-            labels: barLabels,
-            datasets: barDatasets
+            labels: areaLabels,
+            datasets: areaDatasets
         },
         options: {
             responsive: true,
@@ -125,32 +148,38 @@
     });
 
     // Extract data for the pie chart
-    let pieData = {};
-    energyData.original.data.forEach(data => {
-        if (!pieData[data.crop.crop_type]) {
-            pieData[data.crop.crop_type] = 0;
-        }
-        pieData[data.crop.crop_type] += parseFloat(data.cost);
-    });
+let pieData = {};
+energyData.forEach(data => {
+    let key = data.crop.crop_type;
+    if (!pieData[key]) {
+        pieData[key] = 0;
+    }
+    pieData[key] += parseFloat(data.cost);
+});
 
-    // PIE CHART
-    let pieLabels = Object.keys(pieData);
-    let pieValues = Object.values(pieData);
-    let pieColors = pieLabels.map(() => '#' + Math.floor(Math.random() * 16777215).toString(16));
+// Extract pie chart labels and values from the pieData
+let pieLabels = Object.keys(pieData);
+let pieValues = Object.values(pieData);
+let pieColors = pieLabels.map(() => '#' + Math.floor(Math.random() * 16777215).toString(16));
 
-    let pieCtx = document.getElementById('energy-pie-chart').getContext('2d');
-    let pieChart = new Chart(pieCtx, {
-        type: 'pie',
-        data: {
-            labels: pieLabels,
-            datasets: [{
-                data: pieValues,
-                backgroundColor: pieColors
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+// Create Energy Pie Chart
+var energyPieChart = new Chart(document.getElementById("energy-pie-chart").getContext('2d'), {
+    type: 'pie', // Use 'pie' type for 3D pie chart
+    data: {
+        labels: pieLabels,
+        datasets: [{
+            data: pieValues,
+            backgroundColor: pieColors
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        title: {
+            display: true,
+            text: 'Energy Usage by Season and Crop Type'
         }
-    });
+    }
+});
+
 </script>

@@ -14,7 +14,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between">
                         <div class="header-title">
-                            <h4 class="card-title">Energy Usage Analysis</h4>
+                            <h4 class="card-title">Water Usage Analysis</h4>
 
                         </div>
                     </div>
@@ -28,7 +28,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between">
                         <div class="header-title">
-                            <h4 class="card-title">Energy Usage Analysis</h4>
+                            <h4 class="card-title">Water Usage Analysis</h4>
 
                         </div>
                     </div>
@@ -44,6 +44,9 @@
                             <h4 class="card-title">Irrigation Report</h4>
 
                         </div>
+                        <div>
+        <a href="{{ url('/generate-report-pdf') }}" class="btn btn-primary">Download PDF</a>
+    </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive border rounded">
@@ -51,6 +54,7 @@
                                 <thead>
                                     <tr>
                                         <th>Id</th>
+                                        <th>Farmer Name</th>
                                         <th>Season</th>
                                         <th>Crop</th>
                                         <th>Amount</th>
@@ -64,7 +68,8 @@
                                     @foreach ($waters as $water)
                                         <tr>
                                             <td>{{ $water->id }}</td>
-                                            <td>{{ $water->season->name }}</td>
+                                            <td>{{ $water->farmer->name }}</td>
+                                            <td><span class="badge bg-success">{{ $water->season->name }}</span></td>
                                             <td>{{ $water->crop->crop_type }}</td>
                                             <td>{{ $water->amount }}</td>
                                             <td>{{ $water->irrigation_type }}</td>
@@ -87,69 +92,74 @@
 @include('components.dashjs')
 <script>
     // Retrieve water data from backend
-    let waterData = @json($waterJson);
-    console.log(waterData)
+let waterData = @json($waterJson);
+console.log(waterData);
 
-    // Extract labels and datasets for the bar chart
-    let barLabels = waterData.original.data.map(data => data.crop.crop_type);
-    let barDatasets = [{
-        label: 'Amount',
-        data: waterData.original.data.map(data => data.amount),
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        borderColor: 'rgba(255, 99, 132, 1)',
-        borderWidth: 1
-    }, {
-        label: 'Irrigation Frequency',
-        data: waterData.original.data.map(data => data.irrigation_frequency),
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-    }, {
-        label: 'Cost',
-        data: waterData.original.data.map(data => data.cost),
-        backgroundColor: 'rgba(255, 206, 86, 0.2)',
-        borderColor: 'rgba(255, 206, 86, 1)',
-        borderWidth: 1
-    }];
-
-    // Create a bar chart
-    let barCtx = document.getElementById('water-crop-bar-chart').getContext('2d');
-    let barChart = new Chart(barCtx, {
-        type: 'bar',
-        data: {
-            labels: barLabels,
-            datasets: barDatasets
-        },
-        options: {
-            responsive: true,
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }]
-            }
-        }
-    });
-
-    // Extract labels and datasets for the pie chart
-    let pieLabels = [...new Set(waterData.original.data.map(data => data.crop
-        .crop_type))]; // Use a set to get unique crop types
-    let pieData = pieLabels.map(label => {
-        let amount = waterData.original.data.filter(data => data.crop.crop_type === label).reduce((acc, curr) =>
-            acc + curr.amount,
-            0);
-        return {
-            label: label,
-            data: amount,
-            backgroundColor: getRandomColor()
+// Group the data by 'crop.crop_type' and calculate the sum of 'amount' for each crop type
+let cropTypeData = {};
+waterData.original.data.forEach(data => {
+    let cropType = data.crop.crop_type;
+    if (!cropTypeData[cropType]) {
+        cropTypeData[cropType] = {
+            totalAmount: 0,
+            totalCost: 0
         };
-    });
+    }
+    cropTypeData[cropType].totalAmount += parseFloat(data.amount);
+    cropTypeData[cropType].totalCost += parseFloat(data.cost);
+});
+
+// Extract labels and datasets for the bar chart
+let barLabels = Object.keys(cropTypeData);
+let barDatasets = [{
+    label: 'Amount',
+    data: Object.values(cropTypeData).map(data => data.totalAmount),
+    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+    borderColor: 'rgba(255, 99, 132, 1)',
+    borderWidth: 1
+},  {
+    label: 'Cost',
+    data: Object.values(cropTypeData).map(data => data.totalCost),
+    backgroundColor: 'rgba(255, 206, 86, 0.2)',
+    borderColor: 'rgba(255, 206, 86, 1)',
+    borderWidth: 1
+}];
+
+// Create a bar chart
+let barCtx = document.getElementById('water-crop-bar-chart').getContext('2d');
+let barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+        labels: barLabels,
+        datasets: barDatasets
+    },
+    options: {
+        responsive: true,
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true
+                }
+            }]
+        }
+    }
+});
+
+// Extract labels and datasets for the pie chart
+let pieLabels = Object.keys(cropTypeData);
+let pieData = pieLabels.map(label => {
+    return {
+        label: label,
+        data: cropTypeData[label].totalAmount,
+        backgroundColor: getRandomColor()
+    };
+});
+
 
     // Create a pie chart
     let pieCtx = document.getElementById('water-crop-pie-chart').getContext('2d');
     let pieChart = new Chart(pieCtx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
             labels: pieLabels,
             datasets: [{
